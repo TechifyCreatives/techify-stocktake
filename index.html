@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Internal Stocktake System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Safirisha-family theme: deep forest green + vivid orange, Unbounded/Figtree */
+    --teal:#f95312; --teal-d:#d8440c;              /* accent / primary action (orange) */
+    --navy:#05361f; --navy-2:#0a4a2b;              /* deep green: sidebar, headings, ink */
+    --bg:#eef1ee; --panel:#ffffff; --line:#e4e9e4; --muted:#5f6b64;
+    --text:#10201a; --green:#1f9d57; --green-bg:#dcf3e6;
+    --amber:#e08a1e; --amber-bg:#fbeecd; --red:#e23d2e; --red-bg:#fbe2df;
+    --blue:#2f6f8f; --blue-bg:#dceaf1; --slate-bg:#f5f7f5;
+    --shadow:0 2px 10px rgba(5,54,31,.06),0 1px 2px rgba(5,54,31,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Figtree',system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.45}
+  .brand h1,.page-head h2,.stat .v,.drawer-h h3{font-family:'Unbounded',system-ui,sans-serif;letter-spacing:-.01em}
+  button{font-family:inherit;cursor:pointer}
+  .app{display:flex;min-height:100vh}
+  /* Sidebar */
+  .side{width:224px;background:var(--navy);color:#cbd5e1;flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+  .brand{padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .brand h1{font-size:14px;margin:0;color:#fff;letter-spacing:.3px}
+  .brand span{font-size:11px;color:#94a3b8}
+  .nav{padding:10px 10px;flex:1;overflow:auto}
+  .nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;color:#cbd5e1;text-decoration:none;font-size:13.5px;margin-bottom:2px}
+  .nav a:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav a.active{background:var(--teal);color:#fff}
+  .nav a .ic{width:17px;text-align:center;font-size:15px}
+  .nav .sec{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b;padding:14px 12px 6px}
+  .side-foot{padding:12px 14px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:#94a3b8}
+  /* Main */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .top{background:var(--panel);border-bottom:1px solid var(--line);padding:11px 22px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:20}
+  .top .wh-wrap{position:relative}
+  .wh-btn{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--slate-bg);padding:8px 14px;border-radius:999px;font-size:13px;color:var(--text);font-weight:600}
+  .wh-menu{position:absolute;top:42px;left:0;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:8px;width:240px;z-index:30;display:none}
+  .wh-menu.open{display:block}
+  .wh-menu label{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:6px;font-size:13px;cursor:pointer}
+  .wh-menu label:hover{background:var(--slate-bg)}
+  .spacer{flex:1}
+  .role-switch{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+  .role-switch select{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;background:#fff;color:var(--text)}
+  .who{display:flex;align-items:center;gap:9px}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
+  .content{padding:22px 24px;max-width:1180px;width:100%}
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;gap:16px;flex-wrap:wrap}
+  .page-head h2{margin:0 0 3px;font-size:21px;color:var(--navy)}
+  .page-head p{margin:0;color:var(--muted);font-size:13px}
+  /* Cards */
+  .grid{display:grid;gap:16px}
+  .cols-4{grid-template-columns:repeat(4,1fr)}
+  .cols-3{grid-template-columns:repeat(3,1fr)}
+  .cols-2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+  .card.pad{padding:18px}
+  .stat{padding:16px 18px}
+  .stat .k{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+  .stat .v{font-size:26px;font-weight:700;color:var(--navy);line-height:1}
+  .stat .s{font-size:12px;color:var(--muted);margin-top:6px}
+  .card-h{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:between;gap:10px}
+  .card-h h3{margin:0;font-size:14px;color:var(--navy);flex:1}
+  .card-b{padding:16px 18px}
+  /* Chips / bands */
+  .chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-normal{background:var(--green-bg);color:#15803d}
+  .b-amber{background:var(--amber-bg);color:#b45309}
+  .b-red{background:var(--red-bg);color:#b91c1c}
+  .b-unknown{background:#f1f5f9;color:#475569;border:1px dashed #cbd5e1}
+  .b-transit{background:var(--blue-bg);color:#1d4ed8}
+  .b-pending{background:#faf5ff;color:#7e22ce}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  /* Tables */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line);font-weight:600;background:var(--slate-bg)}
+  td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tbody tr.clk{cursor:pointer}
+  tbody tr.clk:hover{background:var(--slate-bg)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--navy-2)}
+  .right{text-align:right}
+  /* Buttons */
+  .btn{border:1px solid var(--line);background:#fff;color:var(--text);padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600}
+  .btn:hover{background:var(--slate-bg)}
+  .btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+  .btn.primary:hover{background:var(--teal-d)}
+  .btn.sm{padding:5px 10px;font-size:12px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--teal)}
+  /* Filters */
+  .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .filters select,.filters input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;color:var(--text)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border:none;background:#fff;padding:7px 11px;font-size:12px;color:var(--muted)}
+  .seg button.on{background:var(--teal);color:#fff}
+  /* Bars */
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:11px;font-size:12.5px}
+  .bar-row .lbl{width:150px;color:var(--navy-2);flex-shrink:0}
+  .bar-track{flex:1;background:#eef2f6;border-radius:6px;height:22px;overflow:hidden;display:flex}
+  .bar-fill{height:100%;display:flex;align-items:center;padding-left:8px;color:#fff;font-size:11px;font-weight:600;min-width:2px}
+  .bar-row .val{width:64px;text-align:right;color:var(--muted);flex-shrink:0}
+  /* Banner */
+  .banner{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:10px;font-size:13px;margin-bottom:16px}
+  .banner.warn{background:var(--amber-bg);color:#92400e;border:1px solid #fde68a}
+  .banner.info{background:var(--blue-bg);color:#1e40af;border:1px solid #bfdbfe}
+  .banner.deny{background:var(--red-bg);color:#991b1b;border:1px solid #fecaca}
+  /* Drawer / modal */
+  .overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:40;display:none}
+  .overlay.open{display:block}
+  .drawer{position:fixed;top:0;right:0;height:100vh;width:520px;max-width:94vw;background:#fff;z-index:50;box-shadow:-8px 0 30px rgba(15,23,42,.18);transform:translateX(100%);transition:transform .22s ease;display:flex;flex-direction:column}
+  .drawer.open{transform:translateX(0)}
+  .drawer-h{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+  .drawer-h h3{margin:0;font-size:16px;color:var(--navy);flex:1}
+  .drawer-b{padding:18px 20px;overflow:auto;flex:1}
+  .x{border:none;background:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1}
+  .kv{display:grid;grid-template-columns:140px 1fr;gap:6px 14px;font-size:13px;margin-bottom:16px}
+  .kv .k{color:var(--muted)}
+  .sub-h{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:18px 0 8px;font-weight:600}
+  .timeline{border-left:2px solid var(--line);padding-left:14px;margin-left:4px}
+  .tl{position:relative;padding-bottom:14px}
+  .tl::before{content:"";position:absolute;left:-21px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--teal);border:2px solid #fff}
+  .tl .d{font-size:11px;color:var(--muted)}
+  .tl .t{font-size:13px;color:var(--navy-2)}
+  /* Misc */
+  .muted{color:var(--muted)}
+  .small{font-size:12px}
+  .mt{margin-top:16px}
+  .flex{display:flex;align-items:center;gap:10px}
+  .between{justify-content:space-between}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:4px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .notice{font-size:12px;color:var(--muted);margin-top:10px}
+  .pill-tab{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+  .pill-tab button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;font-size:13px;color:var(--navy-2)}
+  .pill-tab button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .num{font-variant-numeric:tabular-nums}
+  .empty{padding:36px;text-align:center;color:var(--muted);font-size:13px}
+  input.qty{width:80px}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:80;box-shadow:0 8px 24px rgba(15,23,42,.3);opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  @media(max-width:860px){.cols-4{grid-template-columns:repeat(2,1fr)}.cols-3,.cols-2{grid-template-columns:1fr}.side{width:62px}.brand h1,.brand span,.nav a span.t,.nav .sec,.side-foot{display:none}.nav a{justify-content:center}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><h1>Stocktake</h1><span>Techify · Internal</span></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">Scope v1.0 · Prototype<br>Not a deployed app</div>
+  </aside>
+  <div class="main">
+    <div class="top">
+      <div class="wh-wrap">
+        <button class="wh-btn" id="whBtn"><span class="ic">🏬</span><span id="whLabel">All warehouses</span> <span class="muted">▾</span></button>
+        <div class="wh-menu" id="whMenu"></div>
+      </div>
+      <div class="spacer"></div>
+      <div class="role-switch">
+        <span>Signed in as</span>
+        <select id="roleSel">
+          <option value="super_admin">Ajuma — Super Admin</option>
+          <option value="admin">Brian — Admin (Nairobi, Mombasa)</option>
+          <option value="staff">Faith — Stocktaking staff (Nairobi)</option>
+        </select>
+      </div>
+      <div class="who"><div class="avatar" id="avatar">AO</div></div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-h"><h3 id="drawerTitle">Detail</h3><button class="x" onclick="closeDrawer()">✕</button></div>
+  <div class="drawer-b" id="drawerBody"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   INTERNAL STOCKTAKE SYSTEM — interactive prototype
+   Implements the scope's core rules on seeded Techify data.
+   "Today" is fixed at 2026-11-24 to make ageing demonstrable.
+============================================================ */
+const TODAY = new Date('2026-11-24T00:00:00');
+const daysAgo = n => { const d=new Date(TODAY); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); };
+const fmtDate = s => s ? new Date(s+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+const ageDays = s => s ? Math.round((TODAY - new Date(s+'T00:00:00'))/86400000) : null;
+function band(s){ const a=ageDays(s); if(a===null) return 'unknown'; if(a>=61) return 'red'; if(a>=46) return 'amber'; return 'normal'; }
+const bandChip = s => { const b=band(s),a=ageDays(s);
+  if(b==='unknown') return '<span class="chip b-unknown">Age unknown · verify</span>';
+  const map={normal:['b-normal','Normal'],amber:['b-amber','Amber'],red:['b-red','Red zone']};
+  return `<span class="chip ${map[b][0]}">${map[b][1]} · ${a}d</span>`; };
+
+/* ---------- Seed data ---------- */
+const WAREHOUSES = [
+  {id:'wh1', name:'Nairobi Main Warehouse', loc:'Industrial Area, Nairobi'},
+  {id:'wh2', name:'Mombasa Depot', loc:'Nyali, Mombasa'},
+  {id:'wh3', name:'Nakuru Store', loc:'CBD, Nakuru'},
+];
+const CATEGORIES = ['Refurbished Laptops','New Laptops','Gaming Laptops','Printers & Scanners','Accessories'];
+const ITEMS = [
+  {code:'TS-NL-001', name:'HP OmniBook Ultra 14', cat:'New Laptops', uom:'pcs', supplier:'HP Kenya'},
+  {code:'TS-NL-002', name:'HP ProBook 450 G10', cat:'New Laptops', uom:'pcs', supplier:'HP Kenya'},
+  {code:'TS-GL-001', name:'HP Victus 15 Gaming', cat:'Gaming Laptops', uom:'pcs', supplier:'HP Kenya'},
+  {code:'TS-GL-002', name:'HP OMEN 16', cat:'Gaming Laptops', uom:'pcs', supplier:'HP Kenya'},
+  {code:'TS-RL-001', name:'Dell Latitude 7420 (Refurb)', cat:'Refurbished Laptops', uom:'pcs', supplier:'Shah Tech'},
+  {code:'TS-RL-002', name:'Lenovo ThinkPad T14 (Refurb)', cat:'Refurbished Laptops', uom:'pcs', supplier:'Shah Tech'},
+  {code:'TS-PR-001', name:'HP LaserJet Pro M404dn', cat:'Printers & Scanners', uom:'pcs', supplier:'HP Kenya'},
+  {code:'TS-PR-002', name:'Epson EcoTank L3250', cat:'Printers & Scanners', uom:'pcs', supplier:'Epson'},
+  {code:'TS-AC-001', name:'Logitech MX Keys Combo', cat:'Accessories', uom:'carton', supplier:'Logitech'},
+  {code:'TS-AC-002', name:'Anker USB-C Hub 7-in-1', cat:'Accessories', uom:'carton', supplier:'Anker'},
+  {code:'TS-AC-003', name:'HDMI Cable 1.5m', cat:'Accessories', uom:'carton', supplier:'Generic'},
+];
+// Receipts (lots): each keeps its own received date -> ageing on remaining qty.
+let RECEIPTS = [
+  {id:'r01', code:'TS-NL-001', wh:'wh1', recv:daysAgo(12), orig:40, rem:31, batch:'OMNI-A12', loc:'A·R2·S3'},
+  {id:'r02', code:'TS-NL-002', wh:'wh1', recv:daysAgo(30), orig:60, rem:44, batch:'PB450-07', loc:'A·R2·S4'},
+  {id:'r03', code:'TS-GL-001', wh:'wh1', recv:daysAgo(52), orig:25, rem:18, batch:'VIC-33', loc:'B·R1·S1'},   // amber
+  {id:'r04', code:'TS-GL-002', wh:'wh1', recv:daysAgo(74), orig:15, rem:9,  batch:'OMEN-09', loc:'B·R1·S2'},   // red
+  {id:'r05', code:'TS-RL-001', wh:'wh1', recv:daysAgo(96), orig:30, rem:22, batch:'LAT-REF-5', loc:'C·R3·S1'}, // red
+  {id:'r06', code:'TS-RL-001', wh:'wh1', recv:daysAgo(8),  orig:20, rem:20, batch:'LAT-REF-9', loc:'C·R3·S2'}, // newer lot, same item
+  {id:'r07', code:'TS-PR-001', wh:'wh1', recv:daysAgo(40), orig:18, rem:12, batch:'LJ-M404-2', loc:'D·R1·S1'},
+  {id:'r08', code:'TS-AC-001', wh:'wh1', recv:daysAgo(5),  orig:50, rem:50, batch:'MXK-21', loc:'E·R4·S2'},    // the count demo lot
+  {id:'r09', code:'TS-AC-003', wh:'wh1', recv:null,        orig:120,rem:120,batch:'HDMI-??', loc:'E·R4·S5'},   // age unknown
+  {id:'r10', code:'TS-NL-002', wh:'wh2', recv:daysAgo(22), orig:35, rem:28, batch:'PB450-MB1', loc:'A·R1·S1'},
+  {id:'r11', code:'TS-PR-002', wh:'wh2', recv:daysAgo(63), orig:16, rem:11, batch:'L3250-4', loc:'B·R2·S1'},   // red
+  {id:'r12', code:'TS-RL-002', wh:'wh2', recv:daysAgo(48), orig:24, rem:17, batch:'T14-REF-2', loc:'C·R1·S3'}, // amber
+  {id:'r13', code:'TS-AC-002', wh:'wh3', recv:daysAgo(18), orig:40, rem:33, batch:'ANK-7', loc:'A·R1·S2'},
+  {id:'r14', code:'TS-GL-001', wh:'wh3', recv:daysAgo(81), orig:12, rem:7,  batch:'VIC-NK-1', loc:'B·R1·S1'},  // red
+];
+let MOVEMENTS = [
+  {id:'m01', rid:'r04', type:'receipt', qty:15, date:daysAgo(74), by:'Brian', reason:'New receipt (PO-2210)'},
+  {id:'m02', rid:'r04', type:'stock_out', qty:-6, date:daysAgo(30), by:'Faith', reason:'Issued to retail floor'},
+  {id:'m03', rid:'r01', type:'receipt', qty:40, date:daysAgo(12), by:'Brian', reason:'New receipt (PO-2255)'},
+  {id:'m04', rid:'r01', type:'stock_out', qty:-9, date:daysAgo(4), by:'Faith', reason:'Online orders dispatch'},
+];
+let TRANSFERS = [
+  {id:'t01', src:'wh1', dst:'wh2', status:'in_transit', ref:'TRF-0041', sender:'Brian', receiver:'—',
+    dispatch:daysAgo(3), recvDate:null,
+    lines:[{code:'TS-NL-001', rid:'r01', sent:6, recvd:0}]},
+  {id:'t02', src:'wh1', dst:'wh3', status:'partially_received', ref:'TRF-0039', sender:'Brian', receiver:'Faith',
+    dispatch:daysAgo(9), recvDate:daysAgo(6),
+    lines:[{code:'TS-PR-001', rid:'r07', sent:8, recvd:5, note:'3 pcs outstanding'}]},
+];
+let COUNTS = [
+  {id:'c01', rid:'r08', recorded:50, counted:47, method:'manual', reason:'', status:'submitted',
+    by:'Faith', approver:'—', at:daysAgo(1)},
+];
+let UPLOADS = [
+  {id:'u01', wh:'wh1', purpose:'new_receipt', filename:'HP_delivery_note_PO2261.pdf', kind:'pdf', status:'review',
+    rows:[
+      {item:'HP OmniBook Ultra 14', code:'TS-NL-001', qty:24, date:daysAgo(2), issues:[]},
+      {item:'HP ProBook 450 G10', code:'TS-NL-002', qty:30, date:daysAgo(2), issues:[]},
+      {item:'HP LaserJet Pro M404dn', code:'TS-PR-001', qty:'—', date:daysAgo(2), issues:['Invalid quantity']},
+      {item:'HP Victus 15 Gaming', code:'TS-GL-001', qty:10, date:null, issues:['Missing receipt date']},
+      {item:'HP OmniBook Ultra 14', code:'TS-NL-001', qty:24, date:daysAgo(2), issues:['Possible duplicate of row 1']},
+    ]},
+];
+
+/* ---------- Helpers over data ---------- */
+const item = code => ITEMS.find(i=>i.code===code);
+const wh = id => WAREHOUSES.find(w=>w.id===id);
+const activeReceipts = () => RECEIPTS.filter(r=>r.rem>0);
+function whFilter(r){ return state.whsel.length===0 || state.whsel.includes(r.wh); }
+function visibleReceipts(){ return activeReceipts().filter(whFilter).filter(r=>roleSeesWh(r.wh)); }
+
+/* ---------- Access model ---------- */
+const ROLES = {
+  super_admin:{name:'Ajuma Odawo', initials:'AO', whs:'all', canExport:true, canUpload:true, canAdjust:true, canApprove:true},
+  admin:{name:'Brian K.', initials:'BK', whs:['wh1','wh2'], canExport:false, canUpload:true, canAdjust:true, canApprove:true},
+  staff:{name:'Faith M.', initials:'FM', whs:['wh1'], canExport:false, canUpload:false, canAdjust:false, canApprove:false},
+};
+const R = () => ROLES[state.role];
+function roleSeesWh(id){ const r=R(); return r.whs==='all' || r.whs.includes(id); }
+function allowedWhs(){ const r=R(); return r.whs==='all' ? WAREHOUSES : WAREHOUSES.filter(w=>r.whs.includes(w.id)); }
+
+/* ---------- App state ---------- */
+const state = { screen:'dashboard', role:'super_admin', whsel:[], stockFilter:{cat:'',age:'',q:''} };
+
+/* ---------- Navigation ---------- */
+const NAV = [
+  {id:'dashboard', ic:'📊', label:'Dashboard'},
+  {id:'stock', ic:'📦', label:'Stock'},
+  {id:'uploads', ic:'⬆️', label:'Uploads'},
+  {id:'stocktake', ic:'✅', label:'Stocktake'},
+  {id:'transfers', ic:'🔁', label:'Transfers'},
+  {id:'reports', ic:'📈', label:'Reports'},
+  {sec:'Settings'},
+  {id:'settings', ic:'⚙️', label:'Users, warehouses & categories'},
+];
+function renderNav(){
+  document.getElementById('nav').innerHTML = NAV.map(n=>{
+    if(n.sec) return `<div class="sec">${n.sec}</div>`;
+    return `<a href="#" class="${state.screen===n.id?'active':''}" onclick="go('${n.id}');return false">
+      <span class="ic">${n.ic}</span><span class="t">${n.label}</span></a>`;
+  }).join('');
+}
+function go(id){ state.screen=id; renderNav(); render(); window.scrollTo(0,0); }
+
+/* ---------- Warehouse selector ---------- */
+function renderWhMenu(){
+  const menu=document.getElementById('whMenu');
+  const whs=allowedWhs();
+  menu.innerHTML = `<label><input type="checkbox" id="whAll" ${state.whsel.length===0?'checked':''} onchange="toggleAllWh(this.checked)"> <b>All my warehouses</b></label>
+    <div style="height:1px;background:var(--line);margin:6px 0"></div>` +
+    whs.map(w=>`<label><input type="checkbox" value="${w.id}" ${state.whsel.includes(w.id)?'checked':''} onchange="toggleWh('${w.id}',this.checked)"> ${w.name}</label>`).join('');
+  updateWhLabel();
+}
+function updateWhLabel(){
+  const l=document.getElementById('whLabel');
+  if(state.whsel.length===0) l.textContent = R().whs==='all'?'All warehouses':'All my warehouses';
+  else if(state.whsel.length===1) l.textContent = wh(state.whsel[0]).name;
+  else l.textContent = state.whsel.length+' warehouses';
+}
+function toggleAllWh(on){ if(on){ state.whsel=[]; } renderWhMenu(); render(); }
+function toggleWh(id,on){ if(on){ if(!state.whsel.includes(id)) state.whsel.push(id);} else { state.whsel=state.whsel.filter(x=>x!==id);} renderWhMenu(); render(); }
+
+document.getElementById('whBtn').onclick = (e)=>{e.stopPropagation(); document.getElementById('whMenu').classList.toggle('open');};
+document.body.addEventListener('click',()=>document.getElementById('whMenu').classList.remove('open'));
+document.getElementById('whMenu').addEventListener('click',e=>e.stopPropagation());
+
+/* ---------- Role switch ---------- */
+document.getElementById('roleSel').onchange = e=>{
+  state.role=e.target.value; state.whsel=[];
+  document.getElementById('avatar').textContent=R().initials;
+  renderWhMenu(); render();
+};
+
+/* ---------- Toast + drawer ---------- */
+let toastT;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200); }
+function openDrawer(title,html){ document.getElementById('drawerTitle').innerHTML=title; document.getElementById('drawerBody').innerHTML=html; document.getElementById('overlay').classList.add('open'); document.getElementById('drawer').classList.add('open'); }
+function closeDrawer(){ document.getElementById('overlay').classList.remove('open'); document.getElementById('drawer').classList.remove('open'); }
+
+/* ============================================================
+   SCREENS
+============================================================ */
+function render(){
+  renderWhMenu();
+  const c=document.getElementById('content');
+  c.innerHTML = ({dashboard:Dashboard,stock:Stock,uploads:Uploads,stocktake:Stocktake,transfers:Transfers,reports:Reports,settings:Settings}[state.screen]||Dashboard)();
+}
+
+/* ---- Dashboard ---- */
+function Dashboard(){
+  const recs=visibleReceipts();
+  // current stock BY UNIT (never summed across units)
+  const byUnit={};
+  recs.forEach(r=>{ const u=item(r.code).uom; byUnit[u]=(byUnit[u]||0)+r.rem; });
+  const unitStr = Object.keys(byUnit).length? Object.entries(byUnit).map(([u,q])=>`${q.toLocaleString()} <span class="muted small">${u}</span>`).join(' &nbsp;·&nbsp; ') : '0';
+  const redQty = recs.filter(r=>band(r.recv)==='red').reduce((s,r)=>s+r.rem,0);
+  const redLots = recs.filter(r=>band(r.recv)==='red').length;
+  const amberLots = recs.filter(r=>band(r.recv)==='amber').length;
+  const unknown = recs.filter(r=>band(r.recv)==='unknown').length;
+  const pendingCounts = COUNTS.filter(c=>c.status==='submitted' && roleSeesWh(RECEIPTS.find(r=>r.id===c.rid).wh)).length;
+  const inTransit = TRANSFERS.filter(t=>t.status!=='received' && (roleSeesWh(t.src)||roleSeesWh(t.dst))).length;
+  // by category (by unit kept separate conceptually; here count lots & pcs-equivalent display avoided — show lots)
+  const catAgg={};
+  recs.forEach(r=>{ const c=item(r.code).cat; catAgg[c]=(catAgg[c]||0)+r.rem; });
+  const catMax=Math.max(1,...Object.values(catAgg));
+  const catBars=CATEGORIES.map(cat=>{
+    const v=catAgg[cat]||0; return `<div class="bar-row"><div class="lbl">${cat}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,v/catMax*100)}%;background:var(--teal)">${v||''}</div></div>
+      <div class="val">${v} units</div></div>`;
+  }).join('');
+  // ageing split
+  const bands={normal:0,amber:0,red:0,unknown:0};
+  recs.forEach(r=>bands[band(r.recv)]+=r.rem);
+  const btot=Math.max(1,bands.normal+bands.amber+bands.red+bands.unknown);
+  return `
+  <div class="page-head"><div><h2>Dashboard</h2><p>${whLabelText()} · as at ${fmtDate(TODAY.toISOString().slice(0,10))}</p></div></div>
+  ${redLots?`<div class="banner warn"><span>⚠️</span><div><b>${redLots} lot${redLots>1?'s':''} in the red zone</b> — ${redQty} units have remained in storage more than 60 days. <a href="#" onclick="go('stock');state.stockFilter.age='red';render();return false">Review red-zone stock →</a></div></div>`:''}
+  <div class="grid cols-4">
+    <div class="card stat"><div class="k"><span class="dot" style="background:var(--teal)"></span>Current stock</div><div class="v" style="font-size:20px">${unitStr}</div><div class="s">${recs.length} active lots · counted by unit, never mixed</div></div>
+    <div class="card stat"><div class="k"><span class="dot" style="background:var(--red)"></span>Red zone (61+ days)</div><div class="v">${redQty}</div><div class="s">${redLots} lots · ${amberLots} in amber (46–60d)</div></div>
+    <div class="card stat"><div class="k"><span class="dot" style="background:var(--amber)"></span>Pending verification</div><div class="v">${pendingCounts}${unknown?` · ${unknown}`:''}</div><div class="s">${pendingCounts} counts to approve${unknown?` · ${unknown} age-unknown`:''}</div></div>
+    <div class="card stat"><div class="k"><span class="dot" style="background:var(--blue)"></span>Transfers in transit</div><div class="v">${inTransit}</div><div class="s">goods not counted at either warehouse</div></div>
+  </div>
+  <div class="grid cols-2 mt">
+    <div class="card"><div class="card-h"><h3>Stock by category</h3></div><div class="card-b">${catBars}<div class="notice">Pieces, cartons and pallets are never added into one total — figures show remaining units within each category.</div></div></div>
+    <div class="card"><div class="card-h"><h3>Stock ageing</h3></div><div class="card-b">
+      <div class="bar-track" style="height:30px">
+        <div class="bar-fill" style="width:${bands.normal/btot*100}%;background:var(--green)" title="Normal">${bands.normal||''}</div>
+        <div class="bar-fill" style="width:${bands.amber/btot*100}%;background:var(--amber)" title="Amber">${bands.amber||''}</div>
+        <div class="bar-fill" style="width:${bands.red/btot*100}%;background:var(--red)" title="Red">${bands.red||''}</div>
+        <div class="bar-fill" style="width:${bands.unknown/btot*100}%;background:#94a3b8" title="Unknown">${bands.unknown||''}</div>
+      </div>
+      <div class="legend"><span><span class="dot" style="background:var(--green)"></span>Normal 0–45d (${bands.normal})</span>
+        <span><span class="dot" style="background:var(--amber)"></span>Amber 46–60d (${bands.amber})</span>
+        <span><span class="dot" style="background:var(--red)"></span>Red 61d+ (${bands.red})</span>
+        <span><span class="dot" style="background:#94a3b8"></span>Unknown (${bands.unknown})</span></div>
+      <div class="notice">Age is measured on the remaining quantity of each receipt. A transfer keeps the original receipt age.</div>
+    </div></div>
+  </div>`;
+}
+function whLabelText(){ return state.whsel.length===0 ? (R().whs==='all'?'All warehouses':'All assigned warehouses') : state.whsel.map(id=>wh(id).name).join(', '); }
+
+/* ---- Stock ---- */
+function Stock(){
+  const f=state.stockFilter;
+  let recs=visibleReceipts();
+  if(f.cat) recs=recs.filter(r=>item(r.code).cat===f.cat);
+  if(f.age) recs=recs.filter(r=>band(r.recv)===f.age);
+  if(f.q){ const q=f.q.toLowerCase(); recs=recs.filter(r=>item(r.code).name.toLowerCase().includes(q)||r.code.toLowerCase().includes(q)); }
+  const rows = recs.map(r=>{ const it=item(r.code);
+    return `<tr class="clk" onclick="openReceipt('${r.id}')">
+      <td><div><b>${it.name}</b></div><div class="mono">${r.code} · lot ${r.batch}</div></td>
+      <td>${it.cat}</td>
+      <td>${wh(r.wh).name.replace(' Warehouse','').replace(' Depot','').replace(' Store','')}</td>
+      <td class="right num"><b>${r.rem}</b> <span class="muted small">${it.uom}</span></td>
+      <td>${fmtDate(r.recv)}</td>
+      <td>${bandChip(r.recv)}</td>
+      <td class="mono small">${r.loc||'—'}</td>
+    </tr>`;}).join('');
+  return `
+  <div class="page-head"><div><h2>Stock</h2><p>${recs.length} lots · ${whLabelText()}</p></div></div>
+  <div class="filters">
+    <input placeholder="Search item or code…" value="${f.q}" oninput="state.stockFilter.q=this.value;render()" style="min-width:200px">
+    <select onchange="state.stockFilter.cat=this.value;render()"><option value="">All categories</option>${CATEGORIES.map(c=>`<option ${f.cat===c?'selected':''}>${c}</option>`).join('')}</select>
+    <div class="seg">
+      ${['','normal','amber','red','unknown'].map(b=>`<button class="${f.age===b?'on':''}" onclick="state.stockFilter.age='${b}';render()">${b===''?'All ages':b==='unknown'?'Unknown':b[0].toUpperCase()+b.slice(1)}</button>`).join('')}
+    </div>
+    <span class="spacer"></span>
+    ${exportBtn('stock list')}
+  </div>
+  <div class="card"><table>
+    <thead><tr><th>Item</th><th>Category</th><th>Warehouse</th><th class="right">Remaining</th><th>Received</th><th>Ageing</th><th>Location</th></tr></thead>
+    <tbody>${rows||`<tr><td colspan="7"><div class="empty">No stock matches these filters.</div></td></tr>`}</tbody>
+  </table></div>
+  <div class="notice">Same item, different arrival dates = separate lots, kept distinguishable (e.g. the two Dell Latitude 7420 receipts). Click any row for its full history.</div>`;
+}
+function openReceipt(id){
+  const r=RECEIPTS.find(x=>x.id===id), it=item(r.code);
+  const moves=MOVEMENTS.filter(m=>m.rid===id).sort((a,b)=>b.date.localeCompare(a.date));
+  const cnts=COUNTS.filter(c=>c.rid===id);
+  const tl = [
+    ...moves.map(m=>({date:m.date, t:`${moveLabel(m.type)} ${m.qty>0?'+':''}${m.qty} ${it.uom} — ${m.reason} <span class="muted">(${m.by})</span>`})),
+    ...cnts.map(c=>({date:c.at, t:`Count submitted: recorded ${c.recorded}, counted ${c.counted} (diff ${c.counted-c.recorded}) — ${c.status} <span class="muted">(${c.by})</span>`})),
+    {date:r.recv||'—', t:`Lot received into ${wh(r.wh).name}`}
+  ].filter(x=>x.date!=='—'||true).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  openDrawer(`${it.name}`, `
+    <div class="kv">
+      <div class="k">Item code</div><div class="mono">${r.code}</div>
+      <div class="k">Lot / batch</div><div class="mono">${r.batch}</div>
+      <div class="k">Category</div><div>${it.cat}</div>
+      <div class="k">Warehouse</div><div>${wh(r.wh).name}</div>
+      <div class="k">Location</div><div class="mono">${r.loc||'—'}</div>
+      <div class="k">Remaining</div><div><b>${r.rem}</b> of ${r.orig} ${it.uom}</div>
+      <div class="k">Received</div><div>${fmtDate(r.recv)} ${r.recv?`<span class="muted">(${ageDays(r.recv)} days ago)</span>`:''}</div>
+      <div class="k">Ageing</div><div>${bandChip(r.recv)}</div>
+      <div class="k">Supplier</div><div>${it.supplier}</div>
+    </div>
+    ${r.recv===null?`<div class="banner warn"><span>⚠️</span><div>No receipt date on record. Shown as <b>Age unknown · verification needed</b> — the upload date is not used in its place.</div></div>`:''}
+    <div class="sub-h">Receipt &amp; movement history</div>
+    <div class="timeline">${tl.map(x=>`<div class="tl"><div class="d">${fmtDate(x.date)}</div><div class="t">${x.t}</div></div>`).join('')||'<div class="muted small">No movements yet.</div>'}</div>
+  `);
+}
+const moveLabel = t => ({receipt:'Received',stock_out:'Stock out',transfer_out:'Transfer out',transfer_in:'Transfer in',adjustment:'Adjustment'}[t]||t);
+
+/* ---- Uploads ---- */
+function Uploads(){
+  if(!R().canUpload){
+    return `<div class="page-head"><div><h2>Uploads</h2><p>Import stock from Excel, CSV, PDF or scanned images</p></div></div>
+    <div class="banner deny"><span>🔒</span><div><b>Uploads are not available for your role.</b> Stocktaking staff can scan and submit counts, but cannot upload stock files. Ask an Admin or the Super Admin to import.</div></div>`;
+  }
+  const u=UPLOADS.find(x=>x.status==='review');
+  const purposes={opening_stock:'Opening stock',new_receipt:'New receipt',physical_count:'Physical count'};
+  const issuesCount = u? u.rows.filter(r=>r.issues.length).length : 0;
+  return `
+  <div class="page-head"><div><h2>Uploads</h2><p>Upload → select warehouse &amp; purpose → review → confirm</p></div>
+    <div><button class="btn primary" onclick="toast('File picker — Excel, CSV, PDF or scanned image')">⬆️ Upload file</button></div></div>
+  <div class="grid cols-3" style="margin-bottom:18px">
+    ${Object.entries(purposes).map(([k,v])=>`<div class="card pad"><div class="flex between"><b>${v}</b></div>
+      <div class="muted small mt">${k==='opening_stock'?'Establishes starting quantities.':k==='new_receipt'?'Adds newly received quantities.':'Compares counts with recorded stock — does not add the file again.'}</div></div>`).join('')}
+  </div>
+  ${u?`
+  <div class="card">
+    <div class="card-h"><h3>Review: ${u.filename}</h3>
+      <span class="chip b-pending">${u.kind.toUpperCase()}</span>
+      <span class="chip b-transit">${purposes[u.purpose]}</span>
+      <span class="chip b-normal">${wh(u.wh).name}</span></div>
+    <div class="card-b" style="padding:0">
+      ${issuesCount?`<div class="banner warn" style="margin:16px">⚠️ <div>${issuesCount} of ${u.rows.length} rows need attention before confirming. Resolve or skip highlighted rows — nothing is posted to stock until you confirm.</div></div>`:''}
+      <table>
+        <thead><tr><th>#</th><th>Extracted item</th><th>Code</th><th class="right">Qty</th><th>Receipt date</th><th>Status</th></tr></thead>
+        <tbody>${u.rows.map((r,i)=>`<tr>
+          <td class="muted">${i+1}</td>
+          <td>${r.item}</td><td class="mono">${r.code}</td>
+          <td class="right num">${r.qty}</td>
+          <td>${r.date?fmtDate(r.date):'<span class="chip b-unknown">missing</span>'}</td>
+          <td>${r.issues.length?`<span class="chip b-red">${r.issues.join('; ')}</span>`:'<span class="chip b-normal">OK</span>'}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>
+  <div class="flex mt" style="justify-content:flex-end;gap:10px">
+    <button class="btn" onclick="toast('Source document preserved; import discarded')">Discard</button>
+    <button class="btn primary" onclick="confirmUpload()">Confirm ${u.rows.filter(r=>!r.issues.includes('Possible duplicate of row 1')).length} rows</button>
+  </div>
+  <div class="notice">Detected automatically: duplicate rows, missing fields, invalid quantities, ambiguous matches and missing receipt dates. The original PDF is kept with the import summary. Expected-delivery manifests stay <b>pending</b> until receipt is confirmed.</div>
+  `:`<div class="card"><div class="empty">No uploads awaiting review. Use <b>Upload file</b> to import a stock sheet.</div></div>`}`;
+}
+function confirmUpload(){ toast('✓ Import confirmed — valid rows posted, duplicate skipped, 2 flagged rows held for review'); }
+
+/* ---- Stocktake ---- */
+function Stocktake(){
+  const pend=COUNTS.filter(c=>c.status==='submitted' && roleSeesWh(RECEIPTS.find(r=>r.id===c.rid).wh));
+  return `
+  <div class="page-head"><div><h2>Stocktake</h2><p>Scan a QR label or search an item, count, then submit</p></div></div>
+  <div class="grid cols-2">
+    <div class="card"><div class="card-h"><h3>New count</h3></div><div class="card-b">
+      <div class="flex" style="gap:8px;margin-bottom:12px">
+        <button class="btn" onclick="toast('📷 QR scanner — point at the lot label')">📷 Scan QR</button>
+        <span class="muted small">or search</span>
+      </div>
+      <select id="ctItem" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;margin-bottom:12px" onchange="ctPreview()">
+        <option value="">Select a lot…</option>
+        ${visibleReceipts().map(r=>`<option value="${r.id}">${item(r.code).name} · ${r.batch} · ${wh(r.wh).name} (recorded ${r.rem})</option>`).join('')}
+      </select>
+      <div id="ctPrev"></div>
+    </div></div>
+    <div class="card"><div class="card-h"><h3>Awaiting approval</h3><span class="chip b-pending">${pend.length}</span></div><div class="card-b" style="padding:0">
+      ${pend.length?`<table><thead><tr><th>Item</th><th class="right">Recorded</th><th class="right">Counted</th><th class="right">Diff</th><th></th></tr></thead>
+      <tbody>${pend.map(c=>{const r=RECEIPTS.find(x=>x.id===c.rid),d=c.counted-c.recorded;
+        return `<tr><td><b>${item(r.code).name}</b><div class="mono">${r.batch}</div></td>
+          <td class="right num">${c.recorded}</td><td class="right num">${c.counted}</td>
+          <td class="right num" style="color:${d<0?'var(--red)':'var(--green)'}"><b>${d>0?'+':''}${d}</b></td>
+          <td class="right">${R().canApprove?`<button class="btn sm primary" onclick="approveCount('${c.id}')">Approve</button>`:'<span class="muted small">—</span>'}</td></tr>`;}).join('')}</tbody></table>`
+      :`<div class="empty">No counts awaiting approval.</div>`}
+    </div></div>
+  </div>
+  <div class="notice">A discrepancy only changes the balance after a reason is given and an authorised user approves. The submitted count, reason, approver and adjustment stay in history. Re-printing a QR label never creates duplicate stock.</div>`;
+}
+function ctPreview(){
+  const id=document.getElementById('ctItem').value; const box=document.getElementById('ctPrev');
+  if(!id){box.innerHTML='';return;}
+  const r=RECEIPTS.find(x=>x.id===id), it=item(r.code);
+  box.innerHTML=`
+    <div class="kv"><div class="k">Recorded</div><div><b>${r.rem}</b> ${it.uom}</div><div class="k">Location</div><div class="mono">${r.loc}</div></div>
+    <label class="small muted">Physical count</label>
+    <div class="flex" style="margin:6px 0 12px"><input class="qty" id="ctQty" type="number" value="${r.rem}" oninput="ctDiff(${r.rem})"><span class="muted">${it.uom}</span>
+      <span id="ctDiff" class="chip b-normal">Difference 0</span></div>
+    <textarea id="ctReason" placeholder="Reason (required if different)…" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px;min-height:54px"></textarea>
+    <div class="flex mt" style="justify-content:flex-end"><button class="btn primary" onclick="submitCount('${id}',${r.rem})">Submit count</button></div>`;
+}
+function ctDiff(rec){ const v=+document.getElementById('ctQty').value||0,d=v-rec,el=document.getElementById('ctDiff');
+  el.className='chip '+(d===0?'b-normal':d<0?'b-red':'b-amber'); el.textContent='Difference '+(d>0?'+':'')+d; }
+function submitCount(id,rec){ const v=+document.getElementById('ctQty').value||0, reason=document.getElementById('ctReason').value.trim();
+  if(v!==rec && !reason){ toast('⚠️ A reason is required when the count differs'); return; }
+  const r=RECEIPTS.find(x=>x.id===id);
+  COUNTS.push({id:'c'+Date.now(), rid:id, recorded:rec, counted:v, method:'manual', reason, status:'submitted', by:R().name, approver:'—', at:TODAY.toISOString().slice(0,10)});
+  toast(v===rec?'✓ Count submitted — matches recorded balance':'✓ Count submitted for approval (balance unchanged until approved)'); render();
+}
+function approveCount(cid){ const c=COUNTS.find(x=>x.id===cid); c.status='approved'; c.approver=R().name;
+  const r=RECEIPTS.find(x=>x.id===c.rid); const d=c.counted-c.recorded;
+  r.rem=c.counted; MOVEMENTS.push({id:'m'+Date.now(), rid:c.rid, type:'adjustment', qty:d, date:TODAY.toISOString().slice(0,10), by:R().name, reason:'Stocktake adjustment'+(c.reason?': '+c.reason:'')});
+  toast(`✓ Approved — balance adjusted by ${d>0?'+':''}${d}, logged as traceable adjustment`); render();
+}
+
+/* ---- Transfers ---- */
+function Transfers(){
+  const vis=TRANSFERS.filter(t=>roleSeesWh(t.src)||roleSeesWh(t.dst));
+  const canMove = R().canAdjust || R().whs==='all';
+  return `
+  <div class="page-head"><div><h2>Transfers</h2><p>Goods in transit are held separate from available stock at both warehouses</p></div>
+    <div><button class="btn primary" ${canMove?'':'disabled'} onclick="toast('New transfer — select stock & quantity, choose destination, send')">＋ New transfer</button></div></div>
+  <div class="card"><table>
+    <thead><tr><th>Ref</th><th>Route</th><th>Items</th><th class="right">Sent</th><th class="right">Received</th><th>Status</th><th></th></tr></thead>
+    <tbody>${vis.map(t=>{
+      const sent=t.lines.reduce((s,l)=>s+l.sent,0), recvd=t.lines.reduce((s,l)=>s+l.recvd,0);
+      const st={in_transit:['b-transit','In transit'],partially_received:['b-amber','Partial'],received:['b-normal','Received'],cancelled:['b-unknown','Cancelled']}[t.status];
+      const canReceive = t.status!=='received' && roleSeesWh(t.dst) && canMove;
+      return `<tr>
+        <td class="mono">${t.ref}</td>
+        <td>${wh(t.src).name.split(' ')[0]} → ${wh(t.dst).name.split(' ')[0]}</td>
+        <td>${t.lines.map(l=>`${item(l.code).name} <span class="muted">×${l.sent}</span>`).join('<br>')}</td>
+        <td class="right num">${sent}</td>
+        <td class="right num">${recvd}${recvd<sent?` <span class="muted small">(${sent-recvd} out)</span>`:''}</td>
+        <td><span class="chip ${st[0]}">${st[1]}</span></td>
+        <td class="right">${canReceive?`<button class="btn sm primary" onclick="receiveTransfer('${t.id}')">Confirm receipt</button>`:'<span class="muted small">—</span>'}</td>
+      </tr>`;}).join('')}</tbody>
+  </table></div>
+  <div class="notice">Dispatch records source, destination, sender, quantities and dates. On receipt a new lot is created at the destination with the <b>same original receipt age</b>, and any shortage stays outstanding. Partial receipts are allowed.</div>`;
+}
+function receiveTransfer(id){ const t=TRANSFERS.find(x=>x.id===id);
+  t.lines.forEach(l=>l.recvd=l.sent); t.status='received'; t.recvDate=TODAY.toISOString().slice(0,10); t.receiver=R().name;
+  toast('✓ Receipt confirmed at destination — original receipt age preserved on the new lot'); render();
+}
+
+/* ---- Reports ---- */
+function Reports(){
+  const recs=visibleReceipts();
+  const byWh={}; WAREHOUSES.forEach(w=>{ if(roleSeesWh(w.id)&&(state.whsel.length===0||state.whsel.includes(w.id))) byWh[w.name]=0;});
+  recs.forEach(r=>{ const n=wh(r.wh).name; if(n in byWh) byWh[n]+=r.rem;});
+  const catAgg={}; CATEGORIES.forEach(c=>catAgg[c]=0); recs.forEach(r=>catAgg[item(r.code).cat]+=r.rem);
+  const bands={normal:0,amber:0,red:0,unknown:0}; recs.forEach(r=>bands[band(r.recv)]+=r.rem);
+  const bar=(obj,color)=>{ const mx=Math.max(1,...Object.values(obj)); return Object.entries(obj).map(([k,v])=>
+    `<div class="bar-row"><div class="lbl">${k.replace(' Warehouse','').replace(' Depot','').replace(' Store','')}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,v/mx*100)}%;background:${color}">${v||''}</div></div><div class="val">${v}</div></div>`).join(''); };
+  return `
+  <div class="page-head"><div><h2>Reports</h2><p>${whLabelText()}</p></div><div>${exportBtn('report')}</div></div>
+  ${!R().canExport?`<div class="banner info"><span>🔒</span><div>You can view every report on screen. <b>Export is reserved for the Super Admin</b> and is enforced on the server — spreadsheet, PDF, graph and bulk-data downloads are all blocked for your role.</div></div>`:''}
+  <div class="grid cols-2">
+    <div class="card"><div class="card-h"><h3>Stock by warehouse</h3></div><div class="card-b">${bar(byWh,'var(--teal)')||'<div class="muted small">No data</div>'}<div class="notice">Click a bar to open its item list.</div></div></div>
+    <div class="card"><div class="card-h"><h3>Stock by category</h3></div><div class="card-b">${bar(catAgg,'var(--navy-2)')}</div></div>
+    <div class="card"><div class="card-h"><h3>Stock ageing</h3></div><div class="card-b">
+      ${bar({'Normal 0–45d':bands.normal,'Amber 46–60d':bands.amber,'Red 61d+':bands.red,'Unknown':bands.unknown},'var(--amber)')}
+    </div></div>
+    <div class="card"><div class="card-h"><h3>Stocktake differences</h3></div><div class="card-b">
+      <table><thead><tr><th>Item</th><th class="right">Recorded</th><th class="right">Counted</th><th class="right">Diff</th><th>Status</th></tr></thead>
+      <tbody>${COUNTS.map(c=>{const r=RECEIPTS.find(x=>x.id===c.rid),d=c.counted-c.recorded;return `<tr><td>${item(r.code).name}</td><td class="right num">${c.recorded}</td><td class="right num">${c.counted}</td><td class="right num" style="color:${d<0?'var(--red)':'var(--green)'}">${d>0?'+':''}${d}</td><td><span class="chip ${c.status==='approved'?'b-normal':'b-pending'}">${c.status}</span></td></tr>`;}).join('')}</tbody></table>
+    </div></div>
+  </div>
+  <div class="notice">Every graph is filterable by warehouse, category, item and date, with units labelled. Only the Super Admin may export reports or the underlying data.</div>`;
+}
+function exportBtn(what){
+  if(R().canExport) return `<button class="btn" onclick="toast('⬇️ Exporting ${what} (Super Admin) — logged in audit trail')">⬇️ Export</button>`;
+  return `<button class="btn" disabled title="Export is restricted to the Super Admin">⬇️ Export · restricted</button>`;
+}
+
+/* ---- Settings ---- */
+function Settings(){
+  if(R().whs!=='all'){
+    return `<div class="page-head"><div><h2>Settings</h2></div></div>
+    <div class="banner deny"><span>🔒</span><div><b>Only the Super Admin manages users, warehouses and categories.</b> Switch the role selector to Ajuma (Super Admin) to view this screen.</div></div>`;
+  }
+  const users=[
+    {n:'Ajuma Odawo', r:'Super Admin', w:'All warehouses', st:'Active'},
+    {n:'Brian K.', r:'Admin', w:'Nairobi, Mombasa', st:'Active'},
+    {n:'Faith M.', r:'Stocktaking staff', w:'Nairobi', st:'Active'},
+    {n:'James O.', r:'Stocktaking staff', w:'Nakuru', st:'Disabled'},
+  ];
+  return `
+  <div class="page-head"><div><h2>Settings</h2><p>Users, warehouses and categories</p></div></div>
+  <div class="pill-tab"><button class="on">Users &amp; roles</button><button onclick="toast('Warehouses: ${WAREHOUSES.map(w=>w.name).join(', ')}')">Warehouses</button><button onclick="toast('Categories: ${CATEGORIES.join(', ')}')">Categories</button></div>
+  <div class="card"><div class="card-h"><h3>Users</h3><button class="btn sm primary" onclick="toast('Add user — assign role &amp; warehouse access')">＋ Add user</button></div>
+  <table><thead><tr><th>Name</th><th>Role</th><th>Warehouse access</th><th>Status</th><th></th></tr></thead>
+  <tbody>${users.map(u=>`<tr><td><b>${u.n}</b></td><td>${u.r}</td><td>${u.w}</td>
+    <td><span class="chip ${u.st==='Active'?'b-normal':'b-unknown'}">${u.st}</span></td>
+    <td class="right"><button class="btn sm" onclick="toast('${u.st==='Active'?'Disable':'Enable'} user — history preserved')">${u.st==='Active'?'Disable':'Enable'}</button></td></tr>`).join('')}</tbody></table></div>
+  <div class="notice">Disabling a user keeps their full history. No shared logins — every upload, count, transfer and adjustment stays attributable to one person.</div>`;
+}
+
+/* ---------- Boot ---------- */
+renderNav(); render();
+</script>
+</body>
+</html>
